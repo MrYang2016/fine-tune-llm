@@ -20,15 +20,22 @@ Do not invent alternate steps that contradict that guide unless the user explici
 
 ## Progress tracking (required)
 
+**One new project folder per fine-tune run.** Each new fine-tuning task (or isolated retrain) must start in a newly created directory. Do not reuse or mix artifacts with a previous run’s folder.
+
+Suggested naming: `fine-tune-<short-task>-<YYYYMMDD>` (optionally under a parent such as `~/fine-tunes/…`). Example: `~/fine-tunes/fine-tune-chat-moderation-20261013`.
+
+Resume an existing folder only when the user explicitly continues that run. A new task still gets a new sibling folder.
+
 On every run of this skill:
 
-1. Ask (or infer) the project root directory.
-2. Use a single progress file: `<project>/fine-tune-progress.json`.
-3. If missing, create it from the template below (`status: not_started` for all steps).
-4. Before starting work, read the JSON and show a short status summary (done / in_progress / blocked / skipped / not_started).
-5. After finishing or blocking a step, update that step’s fields and write the file back immediately.
-6. Never mark a step `done` without the listed evidence for that step.
-7. Keep one active `in_progress` step at a time unless the user asks to parallelize.
+1. Create a brand-new project root for this run (or resume an existing one only if the user explicitly continues that run). Set `project_root` in the progress JSON to that absolute path.
+2. Keep all run artifacts inside that folder: `fine-tune-progress.json`, data, adapters, eval outputs, manifests, and related files.
+3. Use a single progress file: `<project_root>/fine-tune-progress.json`.
+4. If missing, create it from the template below (`status: not_started` for all steps).
+5. Before starting work, read the JSON and show a short status summary (done / in_progress / blocked / skipped / not_started).
+6. After finishing or blocking a step, update that step’s fields and write the file back immediately.
+7. Never mark a step `done` without the listed evidence for that step.
+8. Keep one active `in_progress` step at a time unless the user asks to parallelize.
 
 ### Progress JSON template
 
@@ -191,6 +198,7 @@ Allowed `status` values: `not_started` | `in_progress` | `done` | `blocked` | `s
 
 When updating a step:
 
+- keep `project_root` set to this run’s absolute folder path
 - set `updated_at` to ISO-8601 in the user’s timezone label if known
 - set top-level `updated_at` and `current_step` to the active step id
 - append concrete paths, command outputs, metric numbers, or file hashes to `evidence` (never secrets)
@@ -198,6 +206,8 @@ When updating a step:
 
 ## Operating rules
 
+- Start every new fine-tuning task or isolated retrain in a newly created project folder (e.g. `fine-tune-<short-task>-<YYYYMMDD>` or under `~/fine-tunes/…`). Do not reuse or mix with a previous run’s folder; resume a folder only when the user explicitly continues that run.
+- Keep all run artifacts (`fine-tune-progress.json`, data, adapters, eval outputs) inside that folder and set `project_root` to its absolute path.
 - Fine-tuning is not the first step. Complete baselines (step 0) or mark why they are skipped with user approval.
 - Fine-tuning improves tone/structure/consistency for one narrow task; it does not replace retrieval for fresh facts.
 - Prefer small models first; only scale up if evaluation fails.
@@ -278,15 +288,18 @@ Evidence: serve command or compose file path, healthcheck URL (no secrets).
 ### 14 — Monitor & retrain
 Track latency, errors, user/report rates, model+adapter version. Retrain only from reviewed, permission-cleared, opt-in data with a rollback artifact.
 
-Evidence: monitoring checklist + version record.
+For an isolated retrain (new training cycle treated as its own run), create a new sibling project folder—do not overwrite or mix into the previous run’s directory. Resume the existing folder only when the user explicitly continues that same run. Keep the prior adapter path as the rollback reference in evidence.
+
+Evidence: monitoring checklist + version record; for a new retrain folder, `project_root` absolute path and link/note to the prior run’s adapter.
 
 ## Conversation flow when this skill runs
 
-1. Load or create `fine-tune-progress.json`.
-2. Summarize progress in plain language (one short paragraph + which step is next).
-3. Do the next actionable step with the user (or mark blocked/skipped).
-4. Write JSON after each change.
-5. When all required steps are `done` or intentionally `skipped`, give a final handoff: artifact paths, metrics, rollback, and open risks.
+1. If this is a new fine-tuning task or isolated retrain: create a new project folder (e.g. `fine-tune-<short-task>-<YYYYMMDD>`, optionally under `~/fine-tunes/…`). Resume an existing folder only when the user explicitly continues that run.
+2. Load or create `<project_root>/fine-tune-progress.json`, with `project_root` set to that folder’s absolute path. Keep all artifacts for this run inside the folder.
+3. Summarize progress in plain language (one short paragraph + which step is next).
+4. Do the next actionable step with the user (or mark blocked/skipped).
+5. Write JSON after each change.
+6. When all required steps are `done` or intentionally `skipped`, give a final handoff: artifact paths, metrics, rollback, and open risks.
 
 ## Out of scope
 
